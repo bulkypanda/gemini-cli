@@ -579,7 +579,7 @@ const App = ({ config, startupWarnings = [], version }: AppProps) => {
     pendingHistoryItems: pendingGeminiHistoryItems,
     thought,
     cancelOngoingRequest,
-    pendingToolCalls,
+    handleApprovalModeChange,
   } = useGeminiStream(
     config.getGeminiClient(),
     history,
@@ -662,7 +662,7 @@ const App = ({ config, startupWarnings = [], version }: AppProps) => {
     useLoadingIndicator(streamingState);
   const showAutoAcceptIndicator = useAutoAcceptIndicator({
     config,
-    pendingToolCalls,
+    onApprovalModeChange: handleApprovalModeChange,
   });
 
   const handleExit = useCallback(

@@ -8,24 +8,17 @@ import { useState, useEffect } from 'react';
 import {
   ApprovalMode,
   type Config,
-  ToolConfirmationOutcome,
 } from '@google/gemini-cli-core';
 import { useKeypress } from './useKeypress.js';
 
 export interface UseAutoAcceptIndicatorArgs {
   config: Config;
-  pendingToolCalls?: Array<{
-    status: string;
-    request: { callId: string; name: string };
-    confirmationDetails?: {
-      onConfirm: (outcome: ToolConfirmationOutcome) => Promise<void>;
-    };
-  }>;
+  onApprovalModeChange?: (mode: ApprovalMode) => void;
 }
 
 export function useAutoAcceptIndicator({
   config,
-  pendingToolCalls = [],
+  onApprovalModeChange,
 }: UseAutoAcceptIndicatorArgs): ApprovalMode {
   const currentConfigValue = config.getApprovalMode();
   const [showAutoAcceptIndicator, setShowAutoAcceptIndicator] =
@@ -56,45 +49,8 @@ export function useAutoAcceptIndicator({
         // Update local state immediately for responsiveness
         setShowAutoAcceptIndicator(nextApprovalMode);
 
-        // Auto-approve pending tool calls when switching to auto-approval modes
-        if (
-          nextApprovalMode === ApprovalMode.YOLO ||
-          nextApprovalMode === ApprovalMode.AUTO_EDIT
-        ) {
-          let awaitingApprovalCalls = pendingToolCalls.filter(
-            (call) =>
-              call.status === 'awaiting_approval' && call.confirmationDetails,
-          );
-
-          // For AUTO_EDIT mode, only approve edit tools (replace, write_file)
-          if (nextApprovalMode === ApprovalMode.AUTO_EDIT) {
-            awaitingApprovalCalls = awaitingApprovalCalls.filter(
-              (call) =>
-                call.request.name === 'replace' ||
-                call.request.name === 'write_file',
-            );
-          }
-
-          // Process all pending tool calls concurrently
-          Promise.all(
-            awaitingApprovalCalls.map(async (call) => {
-              if (call.confirmationDetails?.onConfirm) {
-                try {
-                  await call.confirmationDetails.onConfirm(
-                    ToolConfirmationOutcome.ProceedOnce,
-                  );
-                } catch (error) {
-                  console.error(
-                    `Failed to auto-approve tool call ${call.request.callId}:`,
-                    error,
-                  );
-                }
-              }
-            }),
-          ).catch((error) => {
-            console.error('Failed to process some tool call approvals:', error);
-          });
-        }
+        // Notify the central handler about the approval mode change
+        onApprovalModeChange?.(nextApprovalMode);
       }
     },
     { isActive: true },

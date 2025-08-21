@@ -20,7 +20,6 @@ import {
   Config,
   Config as ActualConfigType,
   ApprovalMode,
-  ToolConfirmationOutcome,
 } from '@google/gemini-cli-core';
 import { useKeypress, Key } from './useKeypress.js';
 
@@ -299,31 +298,15 @@ describe('useAutoAcceptIndicator', () => {
     expect(mockConfigInstance.getApprovalMode).toHaveBeenCalledTimes(3);
   });
 
-  it('should auto-approve all pending tool calls when switching to YOLO mode', async () => {
+  it('should call onApprovalModeChange when switching to YOLO mode', async () => {
     mockConfigInstance.getApprovalMode.mockReturnValue(ApprovalMode.DEFAULT);
 
-    const mockOnConfirm = vi.fn().mockResolvedValue(undefined);
-    const pendingToolCalls = [
-      {
-        status: 'awaiting_approval',
-        request: { callId: 'test-call-1', name: 'replace' },
-        confirmationDetails: { onConfirm: mockOnConfirm },
-      },
-      {
-        status: 'awaiting_approval',
-        request: { callId: 'test-call-2', name: 'run_shell_command' },
-        confirmationDetails: { onConfirm: mockOnConfirm },
-      },
-      {
-        status: 'executing',
-        request: { callId: 'test-call-3', name: 'other' },
-      },
-    ];
+    const mockOnApprovalModeChange = vi.fn();
 
     renderHook(() =>
       useAutoAcceptIndicator({
         config: mockConfigInstance as unknown as ActualConfigType,
-        pendingToolCalls,
+        onApprovalModeChange: mockOnApprovalModeChange,
       }),
     );
 
@@ -336,39 +319,18 @@ describe('useAutoAcceptIndicator', () => {
     expect(mockConfigInstance.setApprovalMode).toHaveBeenCalledWith(
       ApprovalMode.YOLO,
     );
-    expect(mockOnConfirm).toHaveBeenCalledWith(
-      ToolConfirmationOutcome.ProceedOnce,
-    );
-    expect(mockOnConfirm).toHaveBeenCalledTimes(2); // Both awaiting_approval calls should be approved
+    expect(mockOnApprovalModeChange).toHaveBeenCalledWith(ApprovalMode.YOLO);
   });
 
-  it('should auto-approve only edit tool calls when switching to AUTO_EDIT mode', async () => {
+  it('should call onApprovalModeChange when switching to AUTO_EDIT mode', async () => {
     mockConfigInstance.getApprovalMode.mockReturnValue(ApprovalMode.DEFAULT);
 
-    const mockOnConfirmEdit = vi.fn().mockResolvedValue(undefined);
-    const mockOnConfirmOther = vi.fn().mockResolvedValue(undefined);
-    const pendingToolCalls = [
-      {
-        status: 'awaiting_approval',
-        request: { callId: 'test-call-1', name: 'replace' },
-        confirmationDetails: { onConfirm: mockOnConfirmEdit },
-      },
-      {
-        status: 'awaiting_approval',
-        request: { callId: 'test-call-2', name: 'write_file' },
-        confirmationDetails: { onConfirm: mockOnConfirmEdit },
-      },
-      {
-        status: 'awaiting_approval',
-        request: { callId: 'test-call-3', name: 'run_shell_command' },
-        confirmationDetails: { onConfirm: mockOnConfirmOther },
-      },
-    ];
+    const mockOnApprovalModeChange = vi.fn();
 
     renderHook(() =>
       useAutoAcceptIndicator({
         config: mockConfigInstance as unknown as ActualConfigType,
-        pendingToolCalls,
+        onApprovalModeChange: mockOnApprovalModeChange,
       }),
     );
 
@@ -381,29 +343,18 @@ describe('useAutoAcceptIndicator', () => {
     expect(mockConfigInstance.setApprovalMode).toHaveBeenCalledWith(
       ApprovalMode.AUTO_EDIT,
     );
-    expect(mockOnConfirmEdit).toHaveBeenCalledWith(
-      ToolConfirmationOutcome.ProceedOnce,
-    );
-    expect(mockOnConfirmEdit).toHaveBeenCalledTimes(2); // Called for both replace and write_file
-    expect(mockOnConfirmOther).not.toHaveBeenCalled(); // run_shell_command should not be approved
+    expect(mockOnApprovalModeChange).toHaveBeenCalledWith(ApprovalMode.AUTO_EDIT);
   });
 
-  it('should not auto-approve when switching to DEFAULT mode', async () => {
+  it('should call onApprovalModeChange when switching to DEFAULT mode', async () => {
     mockConfigInstance.getApprovalMode.mockReturnValue(ApprovalMode.YOLO);
 
-    const mockOnConfirm = vi.fn().mockResolvedValue(undefined);
-    const pendingToolCalls = [
-      {
-        status: 'awaiting_approval',
-        request: { callId: 'test-call-1', name: 'replace' },
-        confirmationDetails: { onConfirm: mockOnConfirm },
-      },
-    ];
+    const mockOnApprovalModeChange = vi.fn();
 
     renderHook(() =>
       useAutoAcceptIndicator({
         config: mockConfigInstance as unknown as ActualConfigType,
-        pendingToolCalls,
+        onApprovalModeChange: mockOnApprovalModeChange,
       }),
     );
 
@@ -416,29 +367,15 @@ describe('useAutoAcceptIndicator', () => {
     expect(mockConfigInstance.setApprovalMode).toHaveBeenCalledWith(
       ApprovalMode.DEFAULT,
     );
-    expect(mockOnConfirm).not.toHaveBeenCalled();
+    expect(mockOnApprovalModeChange).toHaveBeenCalledWith(ApprovalMode.DEFAULT);
   });
 
-  it('should handle errors during auto-approval gracefully', async () => {
+  it('should not call onApprovalModeChange when callback is not provided', async () => {
     mockConfigInstance.getApprovalMode.mockReturnValue(ApprovalMode.DEFAULT);
-
-    const mockOnConfirm = vi.fn().mockRejectedValue(new Error('Test error'));
-    const consoleErrorSpy = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-
-    const pendingToolCalls = [
-      {
-        status: 'awaiting_approval',
-        request: { callId: 'test-call-1', name: 'replace' },
-        confirmationDetails: { onConfirm: mockOnConfirm },
-      },
-    ];
 
     renderHook(() =>
       useAutoAcceptIndicator({
         config: mockConfigInstance as unknown as ActualConfigType,
-        pendingToolCalls,
       }),
     );
 
@@ -451,50 +388,35 @@ describe('useAutoAcceptIndicator', () => {
     expect(mockConfigInstance.setApprovalMode).toHaveBeenCalledWith(
       ApprovalMode.YOLO,
     );
-    expect(mockOnConfirm).toHaveBeenCalledWith(
-      ToolConfirmationOutcome.ProceedOnce,
-    );
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Failed to auto-approve tool call test-call-1:',
-      expect.any(Error),
-    );
-
-    consoleErrorSpy.mockRestore();
+    // Should not throw an error when callback is not provided
   });
 
-  it('should not auto-approve non-edit tools in AUTO_EDIT mode', async () => {
+  it('should handle multiple mode changes correctly', async () => {
     mockConfigInstance.getApprovalMode.mockReturnValue(ApprovalMode.DEFAULT);
 
-    const mockOnConfirm = vi.fn().mockResolvedValue(undefined);
-    const pendingToolCalls = [
-      {
-        status: 'awaiting_approval',
-        request: { callId: 'test-call-1', name: 'run_shell_command' },
-        confirmationDetails: { onConfirm: mockOnConfirm },
-      },
-      {
-        status: 'awaiting_approval',
-        request: { callId: 'test-call-2', name: 'other_tool' },
-        confirmationDetails: { onConfirm: mockOnConfirm },
-      },
-    ];
+    const mockOnApprovalModeChange = vi.fn();
 
     renderHook(() =>
       useAutoAcceptIndicator({
         config: mockConfigInstance as unknown as ActualConfigType,
-        pendingToolCalls,
+        onApprovalModeChange: mockOnApprovalModeChange,
       }),
     );
 
+    // Switch to YOLO
     await act(async () => {
-      capturedUseKeypressHandler({ name: 'tab', shift: true } as Key);
-      // Allow promises to resolve
+      capturedUseKeypressHandler({ name: 'y', ctrl: true } as Key);
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    expect(mockConfigInstance.setApprovalMode).toHaveBeenCalledWith(
-      ApprovalMode.AUTO_EDIT,
-    );
-    expect(mockOnConfirm).not.toHaveBeenCalled(); // No non-edit tools should be approved
+    // Switch to AUTO_EDIT
+    await act(async () => {
+      capturedUseKeypressHandler({ name: 'tab', shift: true } as Key);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(mockOnApprovalModeChange).toHaveBeenCalledTimes(2);
+    expect(mockOnApprovalModeChange).toHaveBeenNthCalledWith(1, ApprovalMode.YOLO);
+    expect(mockOnApprovalModeChange).toHaveBeenNthCalledWith(2, ApprovalMode.AUTO_EDIT);
   });
 });
