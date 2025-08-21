@@ -343,7 +343,9 @@ describe('useAutoAcceptIndicator', () => {
     expect(mockConfigInstance.setApprovalMode).toHaveBeenCalledWith(
       ApprovalMode.AUTO_EDIT,
     );
-    expect(mockOnApprovalModeChange).toHaveBeenCalledWith(ApprovalMode.AUTO_EDIT);
+    expect(mockOnApprovalModeChange).toHaveBeenCalledWith(
+      ApprovalMode.AUTO_EDIT,
+    );
   });
 
   it('should call onApprovalModeChange when switching to DEFAULT mode', async () => {
@@ -416,7 +418,13 @@ describe('useAutoAcceptIndicator', () => {
     });
 
     expect(mockOnApprovalModeChange).toHaveBeenCalledTimes(2);
-    expect(mockOnApprovalModeChange).toHaveBeenNthCalledWith(1, ApprovalMode.YOLO);
-    expect(mockOnApprovalModeChange).toHaveBeenNthCalledWith(2, ApprovalMode.AUTO_EDIT);
+    expect(mockOnApprovalModeChange).toHaveBeenNthCalledWith(
+      1,
+      ApprovalMode.YOLO,
+    );
+    expect(mockOnApprovalModeChange).toHaveBeenNthCalledWith(
+      2,
+      ApprovalMode.AUTO_EDIT,
+    );
   });
 });
